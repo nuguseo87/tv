@@ -1,9 +1,33 @@
 {
-  "updatedAt": "2026-07-04T13:28:35.637Z",
+  "updatedAt": "2026-07-04T13:29:02.279Z",
   "sites": [
     {
       "rank": 1,
-      "name": "테스트",
+      "name": "목록 준비 중 1",
+      "url": "https://example.com",
+      "note": ""
+    },
+    {
+      "rank": 2,
+      "name": "목록 준비 중 2",
+      "url": "https://example.com",
+      "note": ""
+    },
+    {
+      "rank": 3,
+      "name": "목록 준비 중 3",
+      "url": "https://example.com",
+      "note": ""
+    },
+    {
+      "rank": 4,
+      "name": "목록 준비 중 4",
+      "url": "https://example.com",
+      "note": ""
+    },
+    {
+      "rank": 5,
+      "name": "목록 준비 중 5",
       "url": "https://example.com",
       "note": ""
     }
