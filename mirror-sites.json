@@ -1,0 +1,35 @@
+{
+  "updatedAt": "2026-07-04T13:15:58.586Z",
+  "sites": [
+    {
+      "rank": 1,
+      "name": "테스트 1",
+      "url": "https://example.com",
+      "note": "ok"
+    },
+    {
+      "rank": 2,
+      "name": "테스트 2",
+      "url": "https://example.org",
+      "note": "ok"
+    },
+    {
+      "rank": 3,
+      "name": "테스트 3",
+      "url": "https://example.net",
+      "note": "ok"
+    },
+    {
+      "rank": 4,
+      "name": "테스트 4",
+      "url": "https://www.iana.org",
+      "note": "ok"
+    },
+    {
+      "rank": 5,
+      "name": "테스트 5",
+      "url": "https://www.w3.org",
+      "note": "ok"
+    }
+  ]
+}
