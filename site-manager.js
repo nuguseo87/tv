@@ -7,6 +7,16 @@ const root = __dirname;
 const jsonPath = path.join(root, "mirror-sites.json");
 const port = 8788;
 
+function sendJson(res, code, payload) {
+  res.writeHead(code, {
+    "Content-Type": "application/json; charset=utf-8",
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type"
+  });
+  res.end(JSON.stringify(payload));
+}
+
 function readSites() {
   try {
     return JSON.parse(fs.readFileSync(jsonPath, "utf8"));
@@ -100,6 +110,7 @@ function page() {
 <script>
 const form=document.getElementById('form'),statusEl=document.getElementById('status');
 const bulk=document.getElementById('bulk');
+const apiBase='http://localhost:8788';
 function row(site={},i){return '<div class="row"><div class="rank">'+(i+1)+'위</div><input data-k="name" placeholder="사이트명" value="'+esc(site.name||'')+'"><input data-k="url" placeholder="https://..." value="'+esc(site.url||'')+'"><input data-k="note" placeholder="메모" value="'+esc(site.note||'')+'"></div>'}
 function esc(v){return String(v).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
 function setStatus(text,cls='status'){statusEl.className=cls;statusEl.textContent=text}
@@ -108,8 +119,9 @@ function getSites(){return getRows().map((r,i)=>({rank:i+1,name:r.querySelector(
 function setSites(sites){while(sites.length<5)sites.push({});form.innerHTML=sites.slice(0,5).map(row).join('');form.querySelectorAll('input').forEach(input=>input.addEventListener('input',()=>{validate();localStorage.setItem('nuguseo-sites-draft',JSON.stringify(getSites()))}));validate()}
 function validate(){getRows().forEach(r=>{const url=r.querySelector('[data-k=url]').value.trim();r.classList.toggle('invalid',!!url&&!/^https?:\\/\\//i.test(url))})}
 function parseBulk(text){return text.split(/\\n+/).map(x=>x.trim()).filter(Boolean).slice(0,5).map((line,i)=>{const url=(line.match(/https?:\\/\\/\\S+/i)||[''])[0].replace(/[),.]+$/,'');let name=line.replace(/^\\s*\\d+\\s*[.)-]?\\s*/,'').replace(url,'').replace(/[-,|]+\\s*$/,'').trim();return{rank:i+1,name:name||'사이트 '+(i+1),url,note:''}})}
-async function load(){setStatus('불러오는 중...');const data=await fetch('/api/sites').then(r=>r.json());let sites=data.sites||[];const draft=localStorage.getItem('nuguseo-sites-draft');if(draft&&!sites.some(s=>s.name&&s.name.startsWith('목록 준비 중'))){localStorage.removeItem('nuguseo-sites-draft')}setSites(sites);setStatus('준비 완료 · '+(data.updatedAt||''),'ok')}
-async function save(){validate();const sites=getSites();if(!sites.some(s=>/^https?:\\/\\//i.test(s.url.trim())))throw new Error('http:// 또는 https:// 주소가 최소 1개 필요합니다.');setStatus('전송 중...');const res=await fetch('/api/sites',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sites})});const data=await res.json();if(!res.ok)throw new Error(data.error||'전송 실패');localStorage.removeItem('nuguseo-sites-draft');setSites(data.data.sites||sites);setStatus(data.message+' · TV에서 목록 새로고침을 누르세요.','ok')}
+async function api(path,options){try{return await fetch(apiBase+path,options)}catch(e){throw new Error('관리자 서버가 꺼져 있습니다. Nuguseo 사이트 관리자.command를 다시 실행해 주세요.')}}
+async function load(){setStatus('불러오는 중...');const data=await api('/api/sites').then(r=>r.json());let sites=data.sites||[];const draft=localStorage.getItem('nuguseo-sites-draft');if(draft&&!sites.some(s=>s.name&&s.name.startsWith('목록 준비 중'))){localStorage.removeItem('nuguseo-sites-draft')}setSites(sites);setStatus('준비 완료 · '+(data.updatedAt||''),'ok')}
+async function save(){validate();const sites=getSites();if(!sites.some(s=>/^https?:\\/\\//i.test(s.url.trim())))throw new Error('http:// 또는 https:// 주소가 최소 1개 필요합니다.');setStatus('전송 중...');const res=await api('/api/sites',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sites})});const data=await res.json();if(!res.ok)throw new Error(data.error||'전송 실패');localStorage.removeItem('nuguseo-sites-draft');setSites(data.data.sites||sites);setStatus(data.message+' · TV에서 목록 새로고침을 누르세요.','ok')}
 function fillFromBulk(){const parsed=parseBulk(bulk.value);if(!parsed.length)throw new Error('붙여넣은 줄에서 주소를 찾지 못했습니다.');setSites(parsed);setStatus('자동 채우기 완료 · 전송을 누르면 반영됩니다.','ok')}
 function copyList(){const text=getSites().map(s=>s.name+' '+s.url).join('\\n');navigator.clipboard.writeText(text).then(()=>setStatus('목록을 클립보드에 복사했습니다.','ok')).catch(()=>setStatus(text,'status'))}
 document.getElementById('fill').onclick=()=>{try{fillFromBulk()}catch(e){setStatus(e.message,'err')}};
@@ -124,14 +136,17 @@ load().catch(e=>setStatus(e.message,'err'));
 }
 
 const server = http.createServer((req, res) => {
+  if (req.method === "OPTIONS") {
+    sendJson(res, 204, {});
+    return;
+  }
   if (req.method === "GET" && req.url === "/") {
     res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
     res.end(page());
     return;
   }
   if (req.method === "GET" && req.url === "/api/sites") {
-    res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
-    res.end(JSON.stringify(readSites()));
+    sendJson(res, 200, readSites());
     return;
   }
   if (req.method === "POST" && req.url === "/api/sites") {
@@ -140,11 +155,9 @@ const server = http.createServer((req, res) => {
     req.on("end", async () => {
       try {
         const result = await saveAndPush(JSON.parse(body || "{}"));
-        res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
-        res.end(JSON.stringify(result));
+        sendJson(res, 200, result);
       } catch (error) {
-        res.writeHead(400, { "Content-Type": "application/json; charset=utf-8" });
-        res.end(JSON.stringify({ ok: false, error: error.message }));
+        sendJson(res, 400, { ok: false, error: error.message });
       }
     });
     return;
@@ -156,5 +169,12 @@ const server = http.createServer((req, res) => {
 server.listen(port, () => {
   const url = `http://localhost:${port}`;
   console.log(`Nuguseo site manager: ${url}`);
-  execFile("open", [url], () => {});
+});
+
+server.on("error", error => {
+  if (error.code === "EADDRINUSE") {
+    console.log(`Nuguseo site manager already running: http://localhost:${port}`);
+    process.exit(0);
+  }
+  throw error;
 });
