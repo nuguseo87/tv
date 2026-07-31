@@ -48,8 +48,12 @@ function runGit(args) {
 }
 
 async function saveAndPush(payload) {
+  const previous = readSites();
   const data = normalize(payload);
   if (data.sites.length === 0) throw new Error("http:// 또는 https:// 주소가 최소 1개 필요합니다.");
+  if (JSON.stringify(previous.sites || []) === JSON.stringify(data.sites)) {
+    return { ok: true, message: "변경사항 없음", data: previous };
+  }
   fs.writeFileSync(jsonPath, JSON.stringify(data, null, 2) + "\n");
   await runGit(["add", "mirror-sites.json"]);
   const status = await runGit(["status", "--short", "mirror-sites.json"]);
